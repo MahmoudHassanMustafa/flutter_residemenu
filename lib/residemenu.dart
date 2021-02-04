@@ -82,13 +82,21 @@ class ResideMenu extends StatefulWidget {
   _ResideMenuState createState() => new _ResideMenuState();
 }
 
-class _ResideMenuState extends State<ResideMenu>
-    with SingleTickerProviderStateMixin {
+class _ResideMenuState extends State<ResideMenu> with TickerProviderStateMixin {
   //determine width
   double _width = 0.0;
   MenuController _controller;
   ValueNotifier<ScrollState> _scrollState =
       ValueNotifier<ScrollState>(ScrollState.NONE);
+
+  //  Curve the content screen borders
+  double borderRadius = 0.0;
+
+  void _toggleBorderRadius(double value) {
+    setState(() {
+      borderRadius = value;
+    });
+  }
 
   void _onScrollMove(DragUpdateDetails details) {
     double offset = details.delta.dx / _width * 2.0;
@@ -96,6 +104,7 @@ class _ResideMenuState extends State<ResideMenu>
       if (details.delta.dy.abs() > details.delta.dx.abs() ||
           details.delta.dx.abs() < 10) return;
     }
+
     _controller.value += offset;
   }
 
@@ -118,6 +127,12 @@ class _ResideMenuState extends State<ResideMenu>
     if (widget.onOffsetChange != null) {
       widget.onOffsetChange(_controller.value.abs());
     }
+
+    //  Keep the content screen borders curved only if the drawer is opened
+    if (_controller.value > 0.001)
+      _toggleBorderRadius(20);
+    else
+      _toggleBorderRadius(0);
   }
 
   void _handleScrollEnd(AnimationStatus status) {
@@ -140,7 +155,6 @@ class _ResideMenuState extends State<ResideMenu>
 
   @override
   void didChangeDependencies() {
-    // TODO: implement didChangeDependencies
     _update();
     super.didChangeDependencies();
   }
@@ -162,7 +176,6 @@ class _ResideMenuState extends State<ResideMenu>
 
   @override
   void initState() {
-    // TODO: implement initState
     _scrollState.addListener(() {
       setState(() {});
     });
@@ -171,7 +184,6 @@ class _ResideMenuState extends State<ResideMenu>
 
   @override
   void dispose() {
-    // TODO: implement dispose
     _scrollState.dispose();
     _controller
       ..removeListener(_handleScrollChange)
@@ -184,98 +196,106 @@ class _ResideMenuState extends State<ResideMenu>
 
   @override
   void didUpdateWidget(ResideMenu oldWidget) {
-    // TODO: implement didUpdateWidget
     _update();
     super.didUpdateWidget(oldWidget);
   }
 
   @override
   Widget build(BuildContext context) {
-    return new LayoutBuilder(builder: (context, cons) {
-      _width = cons.biggest.width;
-      return WillPopScope(
-        child: GestureDetector(
-          onPanUpdate: _onScrollMove,
-          onPanEnd: _onScrollEnd,
-          child: new Stack(
-            children: <Widget>[
-              _scrollState.value != ScrollState.NONE
-                  ? new Container(
-                      decoration: widget.decoration,
-                    )
-                  : null,
-              _scrollState.value != ScrollState.NONE
-                  ? _MenuTransition(
-                      offset: _controller,
-                      child: new Container(
-                          margin: new EdgeInsets.only(
-                              left: (_scrollState.value ==
-                                      ScrollState.ScrollToRight
-                                  ? cons.biggest.width * 0.3
-                                  : 0.0),
-                              right: (_scrollState.value ==
-                                      ScrollState.ScrollToLeft
-                                  ? cons.biggest.width * 0.3
-                                  : 0.0)),
-                          child: _scrollState.value == ScrollState.ScrollToLeft
-                              ? widget.leftView
-                              : widget.rightView),
-                    )
-                  : null,
-              _ContentTransition(
-                  enableScale: widget.enableScale,
-                  enable3D: widget.enable3dRotate,
-                  child: new Stack(
-                    children: <Widget>[
-                      Container(
-                        child: widget.child,
-                        decoration: new BoxDecoration(boxShadow: <BoxShadow>[
-                          new BoxShadow(
-                            color: const Color(0xcc000000),
-                            offset: const Offset(-2.0, 2.0),
-                            blurRadius: widget.elevation * 0.66,
-                          ),
-                        ]),
-                      ),
-                      _scrollState.value != ScrollState.NONE
-                          ? AnimatedBuilder(
-                              animation: _controller,
-                              builder: (c, w) {
-                                return GestureDetector(
-                                  child: Container(
-                                    width: cons.biggest.width,
-                                    height: cons.biggest.height,
-                                    color: new Color.fromARGB(
-                                        !widget.enableFade
-                                            ? 0
-                                            : (125 * _controller.value.abs())
-                                                .toInt(),
-                                        0,
-                                        0,
-                                        0),
+    return SafeArea(
+      child: new LayoutBuilder(builder: (context, cons) {
+        _width = cons.biggest.width;
+        return WillPopScope(
+          child: GestureDetector(
+            onPanUpdate: _onScrollMove,
+            onPanEnd: _onScrollEnd,
+            child: new Stack(
+              children: <Widget>[
+                _scrollState.value != ScrollState.NONE
+                    ? new Container(
+                        decoration: widget.decoration,
+                      )
+                    : null,
+                _scrollState.value != ScrollState.NONE
+                    ? _MenuTransition(
+                        offset: _controller,
+                        child: new Container(
+                            margin: new EdgeInsets.only(
+                                left: (_scrollState.value ==
+                                        ScrollState.ScrollToRight
+                                    ? cons.biggest.width * 0.3
+                                    : 0.0),
+                                right: (_scrollState.value ==
+                                        ScrollState.ScrollToLeft
+                                    ? cons.biggest.width * 0.3
+                                    : 0.0)),
+                            child:
+                                _scrollState.value == ScrollState.ScrollToLeft
+                                    ? widget.leftView
+                                    : widget.rightView),
+                      )
+                    : null,
+                _ContentTransition(
+                    enableScale: widget.enableScale,
+                    enable3D: widget.enable3dRotate,
+                    child: new Stack(
+                      children: <Widget>[
+                        SafeArea(
+                          child: Container(
+                            child: widget.child,
+                            decoration: new BoxDecoration(
+                                color: Colors.green,
+                                borderRadius:
+                                    BorderRadius.circular(borderRadius),
+                                boxShadow: <BoxShadow>[
+                                  new BoxShadow(
+                                    color: const Color(0xcc000000),
+                                    offset: const Offset(-2.0, 2.0),
+                                    blurRadius: widget.elevation * 0.66,
                                   ),
-                                  onTap: () {
-                                    _controller.closeMenu();
-                                  },
-                                );
-                              },
-                            )
-                          : null,
-                    ].where((child) => child != null).toList(),
-                  ),
-                  menuOffset: _controller),
-            ].where((child) => child != null).toList(),
+                                ]),
+                          ),
+                        ),
+                        _scrollState.value != ScrollState.NONE
+                            ? AnimatedBuilder(
+                                animation: _controller,
+                                builder: (c, w) {
+                                  return GestureDetector(
+                                    child: Container(
+                                      width: cons.biggest.width,
+                                      height: cons.biggest.height,
+                                      color: new Color.fromARGB(
+                                          !widget.enableFade
+                                              ? 0
+                                              : (125 * _controller.value.abs())
+                                                  .toInt(),
+                                          0,
+                                          0,
+                                          0),
+                                    ),
+                                    onTap: () {
+                                      _controller.closeMenu();
+                                    },
+                                  );
+                                },
+                              )
+                            : null,
+                      ].where((child) => child != null).toList(),
+                    ),
+                    menuOffset: _controller),
+              ].where((child) => child != null).toList(),
+            ),
           ),
-        ),
-        onWillPop: () async {
-          if (_controller.value != 0) {
-            _controller.closeMenu();
-            return false;
-          }
-          return true;
-        },
-      );
-    });
+          onWillPop: () async {
+            if (_controller.value != 0) {
+              _controller.closeMenu();
+              return false;
+            }
+            return true;
+          },
+        );
+      }),
+    );
   }
 }
 
@@ -307,7 +327,6 @@ class ResideMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new Container(
         height: 40.0,
         child: new Row(
@@ -347,7 +366,6 @@ class _MenuTransition extends AnimatedWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new LayoutBuilder(builder: (context, cons) {
       double width = cons.biggest.width;
       double height = cons.biggest.height;
@@ -382,7 +400,6 @@ class _ContentTransition extends AnimatedWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new LayoutBuilder(builder: (context, cons) {
       double width = cons.biggest.width;
       double val = menuOffset.value;
@@ -462,7 +479,6 @@ class MenuScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new Container(
       padding: new EdgeInsets.only(top: this.topMargin),
       child: new Column(
